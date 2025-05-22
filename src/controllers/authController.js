@@ -179,10 +179,69 @@ const registerUser = async (req, res) => {
 // Doctor registration
 const registerDoctor = async (req, res) => {
   try {
-    const { Name, Email, Password, PhoneNumber, Specialty, LicenseNumber } = req.body;
+    console.log('Doctor registration request body:', req.body);
+
+    // Field normalization - handle both camelCase and PascalCase versions of field names
+    const normalizedData = {
+      Name: req.body.Name || req.body.name || req.body.firstName + ' ' + (req.body.lastName || ''),
+      Email: req.body.Email || req.body.email,
+      Password: req.body.Password || req.body.password,
+      PhoneNumber: req.body.PhoneNumber || req.body.phoneNumber || req.body.phone,
+      Specialty: req.body.Specialty || req.body.specialty,
+      LicenseNumber: req.body.LicenseNumber || req.body.licenseNumber,
+      // Optional fields
+      Experience: req.body.Experience || req.body.experience || 0,
+      AboutMe: req.body.AboutMe || req.body.aboutMe || req.body.bio || '',
+      ConsultationFee: req.body.ConsultationFee || req.body.consultationFee || req.body.fee || 0,
+      ProfileImage: req.body.ProfileImage || req.body.profileImage || req.body.image || '',
+      Services: req.body.Services || req.body.services || [],
+      Languages: req.body.Languages || req.body.languages || []
+    };
+
+    // Add practice location if present
+    if (
+      req.body.city || 
+      req.body.state || 
+      req.body.country || 
+      req.body.address || 
+      req.body.hospital
+    ) {
+      normalizedData.PracticeLocations = [{
+        Hospital: req.body.hospital || req.body.Hospital || '',
+        Address: {
+          Street: req.body.address || req.body.Address || '',
+          City: req.body.city || req.body.City || '',
+          State: req.body.state || req.body.State || '',
+          Country: req.body.country || req.body.Country || '',
+          ZipCode: req.body.zipCode || req.body.ZipCode || ''
+        }
+      }];
+    }
+
+    // Add qualifications if present
+    if (req.body.qualifications || req.body.Qualifications) {
+      const qualText = req.body.qualifications || req.body.Qualifications;
+      if (typeof qualText === 'string') {
+        normalizedData.Qualifications = [{
+          Degree: qualText,
+          Institution: '',
+          Year: new Date().getFullYear()
+        }];
+      }
+    }
 
     // Validate request
-    if (!Name || !Email || !Password || !PhoneNumber || !Specialty || !LicenseNumber) {
+    if (!normalizedData.Name || !normalizedData.Email || !normalizedData.Password || 
+        !normalizedData.PhoneNumber || !normalizedData.Specialty || !normalizedData.LicenseNumber) {
+      console.log('Missing required fields:', {
+        name: !!normalizedData.Name,
+        email: !!normalizedData.Email,
+        password: !!normalizedData.Password,
+        phone: !!normalizedData.PhoneNumber,
+        specialty: !!normalizedData.Specialty,
+        license: !!normalizedData.LicenseNumber
+      });
+      
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
@@ -190,7 +249,7 @@ const registerDoctor = async (req, res) => {
     }
 
     // Check if doctor already exists
-    const doctorExists = await Doctor.findOne({ Email });
+    const doctorExists = await Doctor.findOne({ Email: normalizedData.Email });
 
     if (doctorExists) {
       return res.status(400).json({
@@ -200,14 +259,7 @@ const registerDoctor = async (req, res) => {
     }
 
     // Create new doctor
-    const doctor = await Doctor.create({
-      Name,
-      Email,
-      Password,
-      PhoneNumber,
-      Specialty,
-      LicenseNumber
-    });
+    const doctor = await Doctor.create(normalizedData);
 
     // Generate token
     const token = generateToken(doctor._id, true);

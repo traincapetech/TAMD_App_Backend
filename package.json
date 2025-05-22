@@ -4,8 +4,8 @@
   "description": "Backend server for HMS (Hospital Management System)",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node init && node src/index.js",
+    "dev": "node init && nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -32,4 +32,4 @@
   "engines": {
     "node": ">=18.0.0"
   }
-} 
+}
